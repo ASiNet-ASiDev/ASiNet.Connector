@@ -11,6 +11,9 @@
     <Authors>ASiDew</Authors>
     <Description>Библиотека для создания простых TCP подключений между 2 приложениями.</Description>
     <Copyright>MIT</Copyright>
+    <RepositoryUrl>https://github.com/ASiNet-ASiDev/ASiNet.Connector</RepositoryUrl>
+    <PackageTags>Tcp, Client</PackageTags>
+    <PackageReleaseNotes>Создан.</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

@@ -108,7 +108,7 @@ public partial class Connection : IDisposable
     /// <param name="obj">Объект который следует отправить.</param>
     /// <param name="router">Имя роутера на который требуется отправить запрос.</param>
     /// <param name="method">Имя метода на который следует отправить запрос.</param>
-    public void Send<Tobj>(Tobj obj, string router, string method)
+    public void Send<Tobj>(Tobj obj, Route route)
     {
         if (Status != ConnectionStatus.Connected)
             return;
@@ -117,11 +117,9 @@ public partial class Connection : IDisposable
         {
             lock (_writeLocker)
             {
-                var json = JsonSerializer.Serialize(obj);
-                _writer.Value.Write((short)PackageType.Request);
-                _writer.Value.Write(router);
-                _writer.Value.Write(method);
-                _writer.Value.Write((short)RouterControllerResponse.None);
+                var objJson = JsonSerializer.Serialize(obj);
+                var package = Package.CreateRequest(objJson, route);
+                var json = JsonSerializer.Serialize(package);
                 _writer.Value.Write(json);
             }
         }
@@ -143,49 +141,6 @@ public partial class Connection : IDisposable
         }
     }
 
-    /// <summary>
-    /// Отправить запрос на удалённый клиент.
-    /// </summary>
-    /// <param name="obj">Объект который следует отправить.</param>
-    /// <param name="path">Путь до метода по формату "RouterName/MethodName"</param>
-    public bool Send<Tobj>(string path, Tobj obj)
-    {
-        if (Status != ConnectionStatus.Connected)
-            return false;
-
-        try
-        {
-            lock (_writeLocker)
-            {
-                var result = path.Split('/');
-                if(result.Length < 2)
-                    return false;
-                var json = JsonSerializer.Serialize(obj);
-                _writer.Value.Write((short)PackageType.Request);
-                _writer.Value.Write(result[0]);
-                _writer.Value.Write(result[1]);
-                _writer.Value.Write((short)RouterControllerResponse.None);
-                _writer.Value.Write(json);
-            }
-        }
-        catch (ObjectDisposedException)
-        {
-            Status = ConnectionStatus.Disconnected;
-            Dispose();
-        }
-        catch (IOException ex) when (ex.InnerException is SocketException)
-        {
-            Status = ConnectionStatus.Disconnected;
-            Dispose();
-        }
-        catch (IOException ex) when (ex.InnerException is not SocketException)
-        { }
-        catch
-        {
-            throw;
-        }
-        return true;
-    }
     /// <summary>
     /// Отправить ответ на удалённый клиент.
     /// </summary>
@@ -199,11 +154,8 @@ public partial class Connection : IDisposable
         {
             lock (_writeLocker)
             {
-                _writer.Value.Write((short)package.Type);
-                _writer.Value.Write(package.RouterName);
-                _writer.Value.Write(package.MethodName);
-                _writer.Value.Write((short)package.RouterControllerResult);
-                _writer.Value.Write(package.Json);
+                var json = JsonSerializer.Serialize(package);
+                _writer.Value.Write(json);
             }
         }
         catch (ObjectDisposedException)
@@ -237,27 +189,17 @@ public partial class Connection : IDisposable
             {
                 while (_stream.DataAvailable)
                 {
-                    var pt = (PackageType)_reader.Value.ReadInt16();
-                    var router = _reader.Value.ReadString();
-                    var method = _reader.Value.ReadString();
-                    var rcr = (RouterControllerResponse)_reader.Value.ReadInt16();
                     var json = _reader.Value.ReadString();
-                    var package = new Package()
-                    {
-                        Type = pt,
-                        RouterControllerResult = rcr,
-                        RouterName = router,
-                        Json = json,
-                        MethodName = method,
-                    };
-
-                    if (pt == PackageType.Response)
+                    var package = JsonSerializer.Deserialize<Package>(json);
+                    if(package is null)
+                        continue;
+                    if (package.Type == PackageType.Response)
                     {
                         HandlersController.ExecuteHandler(this, package);
                         return;
                     }
 
-                    if (pt == PackageType.Request)
+                    if (package.Type == PackageType.Request)
                     {
                         var result = RouterController.DirectToRouter(this, package);
                         Send(result);

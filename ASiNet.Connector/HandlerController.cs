@@ -10,7 +10,7 @@ public class HandlersController : IDisposable
         _handlers = new();
     }
 
-    private Dictionary<string, Delegate> _handlers;
+    private Dictionary<Route, Delegate> _handlers;
     /// <summary>
     /// Будет вызван если в контроллере произайдёт неизвестная ошибка.
     /// </summary>
@@ -21,9 +21,30 @@ public class HandlersController : IDisposable
     /// </summary>
     /// <param name="path">Путь по которому ожидается ответ.</param>
     /// <param name="handler">Обработчик.</param>
+    public HandlerControllerResult AddHandler(Route route, Delegate handler)
+    {
+        if (_handlers.TryAdd(route, handler))
+            return HandlerControllerResult.Done;
+        return HandlerControllerResult.AddHandlerFailed;
+    }
+    /// <summary>
+    /// Отвязать существующий обработчик.
+    /// </summary>
+    /// <param name="handler">Обработчик.</param>
+    public HandlerControllerResult RemoveHandler(Route route, Delegate handler)
+    {
+        if (_handlers.ContainsValue(handler) && _handlers.Remove(route))
+            return HandlerControllerResult.Done;
+        return HandlerControllerResult.RemoveHandlerNotFound;
+    }
+
+    /// <summary>
+    /// Добавить новый обработчик.
+    /// </summary>
+    /// <param name="handler">Обработчик.</param>
     public HandlerControllerResult AddHandler(string path, Delegate handler)
     {
-        if (_handlers.TryAdd(path, handler))
+        if (_handlers.TryAdd(Route.FromPath(path), handler))
             return HandlerControllerResult.Done;
         return HandlerControllerResult.AddHandlerFailed;
     }
@@ -34,36 +55,10 @@ public class HandlersController : IDisposable
     /// <param name="handler">Обработчик.</param>
     public HandlerControllerResult RemoveHandler(string path, Delegate handler)
     {
-        if (_handlers.ContainsValue(handler) && _handlers.Remove(path))
+        if (_handlers.ContainsValue(handler) && _handlers.Remove(Route.FromPath(path)))
             return HandlerControllerResult.Done;
         return HandlerControllerResult.RemoveHandlerNotFound;
     }
-    /// <summary>
-    /// Добавить новый обработчик.
-    /// </summary>
-    /// <param name="routerName">Роутер от которого ожидается ответ.</param>
-    /// <param name="methodName">Метод от которого ожидается ответ.</param>
-    /// <param name="handler">Обработчик.</param>
-    /// <returns></returns>
-    public HandlerControllerResult AddHandler(string routerName, string methodName, Delegate handler)
-    {
-        if (_handlers.TryAdd($"{routerName}/{methodName}", handler))
-            return HandlerControllerResult.Done;
-        return HandlerControllerResult.AddHandlerFailed;
-    }
-    /// <summary>
-    /// Отвязать существующий обработчик.
-    /// </summary>
-    /// <param name="routerName">Роутер от которого ожидается ответ.</param>
-    /// <param name="methodName">Метод от которого ожидается ответ.</param>
-    /// <param name="handler">Обработчик.</param>
-    public HandlerControllerResult RemoveHandler(string routerName, string methodName, Delegate handler)
-    {
-        if (_handlers.ContainsValue(handler) && _handlers.Remove($"{routerName}/{methodName}"))
-            return HandlerControllerResult.Done;
-        return HandlerControllerResult.RemoveHandlerNotFound;
-    }
-
 
     /// <summary>
     /// Вызвать обработчик.
@@ -72,7 +67,7 @@ public class HandlersController : IDisposable
     /// <param name="pack">Пакет который спровоцировал вызов обработчика.</param>
     internal void ExecuteHandler(Connection connection, Package pack)
     {
-        if (_handlers.TryGetValue($"{pack.RouterName}/{pack.MethodName}", out var value))
+        if (_handlers.TryGetValue(pack.Route, out var value))
         {
             var method = value.Method;
             var parameters = method.GetParameters();
@@ -117,15 +112,15 @@ public class HandlersController : IDisposable
         }
     }
 
-    public static HandlersController operator +(HandlersController rhc, (string path, Delegate handler) obj)
+    public static HandlersController operator +(HandlersController rhc, (Route route, Delegate handler) obj)
     {
-        rhc.AddHandler(obj.path, obj.handler);
+        rhc.AddHandler(obj.route, obj.handler);
         return rhc;
     }
 
-    public static HandlersController operator -(HandlersController rhc, (string path, Delegate handler) obj)
+    public static HandlersController operator -(HandlersController rhc, (Route route, Delegate handler) obj)
     {
-        rhc.RemoveHandler(obj.path, obj.handler);
+        rhc.RemoveHandler(obj.route, obj.handler);
         return rhc;
     }
 

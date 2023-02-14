@@ -8,39 +8,38 @@ public static class RouterController
 {
     public static Package DirectToRouter(Connection connection, Package pack)
     {
-        var router = FindRouter(pack.RouterName);
+        var router = FindRouter(pack.Route.ControllerName);
         if (router is null)
-            return Package.ErrorRCResponse(RouterControllerResponse.RouterNotFound, pack.RouterName, pack.MethodName);
+            return Package.ErrorRCResponse(RouterControllerResponse.RouterNotFound, pack.Route);
 
-        var routerResult = CreateRouterAndGetMethod(router, pack.MethodName);
+        var routerResult = CreateRouterAndGetMethod(router, pack.Route.MethodName);
         if (routerResult.instance is null)
-            return Package.ErrorRCResponse(RouterControllerResponse.FailedToCreateRouterInstance, pack.RouterName, pack.MethodName);
+            return Package.ErrorRCResponse(RouterControllerResponse.FailedToCreateRouterInstance, pack.Route);
         if (routerResult.method is null)
-            return Package.ErrorRCResponse(RouterControllerResponse.MethodNotFound, pack.RouterName, pack.MethodName);
+            return Package.ErrorRCResponse(RouterControllerResponse.MethodNotFound, pack.Route);
 
         var parameters = routerResult.method.GetParameters();
         if (parameters.Length == 2 && parameters[0].ParameterType == typeof(Connection))
         {
             var param = DeserializeToParameter(pack.Json, parameters[1].ParameterType);
             if (param is null)
-                return Package.ErrorRCResponse(RouterControllerResponse.DeserializeJsonRequestError, pack.RouterName, pack.MethodName);
+                return Package.ErrorRCResponse(RouterControllerResponse.DeserializeJsonRequestError, pack.Route);
             var json = GetJsonResponse(connection, param, routerResult.instance, routerResult.method);
 
             if (json is null)
-                return Package.ErrorRCResponse(RouterControllerResponse.SerializeResponseToJsonError, pack.RouterName, pack.MethodName);
+                return Package.ErrorRCResponse(RouterControllerResponse.SerializeResponseToJsonError, pack.Route);
 
             var package = new Package()
             {
                 Type = PackageType.Response,
                 RouterControllerResult = RouterControllerResponse.Done,
                 Json = json,
-                MethodName = pack.MethodName,
-                RouterName = pack.RouterName,
+                Route = pack.Route,
             };
             return package;
         }
         else
-            return Package.ErrorRCResponse(RouterControllerResponse.InvalidMethodParameters, pack.RouterName, pack.MethodName);
+            return Package.ErrorRCResponse(RouterControllerResponse.InvalidMethodParameters, pack.Route);
     }
 
     private static object? DeserializeToParameter(string json, Type paramType)

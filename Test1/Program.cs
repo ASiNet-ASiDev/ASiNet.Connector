@@ -10,14 +10,14 @@ if (connection.Status != ASiNet.Connector.Enums.ConnectionStatus.Connected)
 
 connection.WriteTimeout = 1000;
 connection.ReadTimeout = 1000;
-connection.HandlersController += ("test1/test", OnPackage);
+connection.HandlersController += (new("test1", "test"), OnPackage);
 
-connection.Send("Hello World!", "test1", "test");
+connection.Send("Hello World!", new("test1", "test"));
 Console.Read();
 
 void OnPackage(Connection connection, Package pack, string str)
 {
-    Console.WriteLine($"[{pack.RouterName}/{pack.MethodName}] [{pack.RouterControllerResult}] [{pack.Json}]");
+    Console.WriteLine($"[{pack.Route}] [{pack.RouterControllerResult}] [{pack.Json}]");
 }
 
 Console.WriteLine($"{connection.Status}");

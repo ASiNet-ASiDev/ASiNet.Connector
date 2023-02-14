@@ -1,4 +1,5 @@
 ﻿using ASiNet.Connector.Enums;
+using System.Text.Json;
 
 namespace ASiNet.Connector;
 public class Package
@@ -18,22 +19,33 @@ public class Package
     /// <summary>
     /// Имя роутера на который будет отправлен пакет/от которого был получен.
     /// </summary>
-    public required string RouterName { get; init; } = null!;
-    /// <summary>
-    /// Имя метода на который будет отправлен пакет/от которого был получен.
-    /// </summary>
-    public required string MethodName { get; init; } = null!;
-    /// <summary>
-    /// Сериализованые отправленный/полученный объект.
-    /// </summary>
+    public required Route Route { get; set; }
     public required string Json { get; init; } = null!;
 
-    internal static Package ErrorRCResponse(RouterControllerResponse response, string routerName, string methodName) => new()
+    internal static Package ErrorRCResponse(RouterControllerResponse response, Route route) => new()
     {
         Type = PackageType.Response,
         RouterControllerResult = response,
-        RouterName = routerName,
-        MethodName = methodName,
+        HandlerControllerResult = HandlerControllerResult.None,
+        Route = route,
         Json = string.Empty,
+    };
+
+    internal static Package CreateRequest<Tobj>(Tobj obj, Route route) => new()
+    {
+        Type = PackageType.Request,
+        RouterControllerResult = RouterControllerResponse.None, 
+        HandlerControllerResult = HandlerControllerResult.None,
+        Route = route,
+        Json = JsonSerializer.Serialize(obj),
+    };
+
+    internal static Package CreateRequest(string json, Route route) => new()
+    {
+        Type = PackageType.Request,
+        RouterControllerResult = RouterControllerResponse.None,
+        HandlerControllerResult = HandlerControllerResult.None,
+        Route = route,
+        Json = json,
     };
 }
