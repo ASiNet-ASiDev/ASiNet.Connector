@@ -4,11 +4,11 @@
 /// </summary>
 
 [AttributeUsage(AttributeTargets.Class)]
-public class RouterAttribute : Attribute
+public class HandlerAttribute : Attribute
 {
-    public RouterAttribute(string name)
+    public HandlerAttribute(string name)
     {
-        RouterName = name;
+        Name = name;
     }
-    public string RouterName { get; set; }
+    public string Name { get; set; }
 }

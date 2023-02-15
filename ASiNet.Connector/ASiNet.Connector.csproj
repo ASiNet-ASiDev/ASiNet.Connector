@@ -7,7 +7,7 @@
     <SignAssembly>False</SignAssembly>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>ASiNet.Lib.Connector</Title>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>ASiDew</Authors>
     <Description>Библиотека для создания простых TCP подключений между 2 приложениями.</Description>
     <Copyright>MIT</Copyright>

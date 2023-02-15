@@ -108,36 +108,15 @@ public partial class Connection : IDisposable
     /// <param name="obj">Объект который следует отправить.</param>
     /// <param name="router">Имя роутера на который требуется отправить запрос.</param>
     /// <param name="method">Имя метода на который следует отправить запрос.</param>
-    public void Send<Tobj>(Tobj obj, Route route)
+    public void SendRequest<Tobj>(Tobj obj, Route route)
     {
-        if (Status != ConnectionStatus.Connected)
-            return;
-
-        try
+        var result = HandlersController.CreateHandler(route);
+        if(result.Status == HandlerControllerResponse.Done)
         {
-            lock (_writeLocker)
-            {
-                var objJson = JsonSerializer.Serialize(obj);
-                var package = Package.CreateRequest(objJson, route);
-                var json = JsonSerializer.Serialize(package);
-                _writer.Value.Write(json);
-            }
-        }
-        catch (ObjectDisposedException)
-        {
-            Status = ConnectionStatus.Disconnected;
-            Dispose();
-        }
-        catch (IOException ex) when (ex.InnerException is SocketException)
-        {
-            Status = ConnectionStatus.Disconnected;
-            Dispose();
-        }
-        catch (IOException ex) when (ex.InnerException is not SocketException)
-        { }
-        catch
-        {
-            throw;
+            Send(result);
+            var objJson = JsonSerializer.Serialize(obj);
+            var package = Package.CreateRequest(objJson, result.Route);
+            Send(package);
         }
     }
 
@@ -193,17 +172,28 @@ public partial class Connection : IDisposable
                     var package = JsonSerializer.Deserialize<Package>(json);
                     if(package is null)
                         continue;
-                    if (package.Type == PackageType.Response)
-                    {
-                        HandlersController.ExecuteHandler(this, package);
-                        return;
-                    }
 
-                    if (package.Type == PackageType.Request)
+                    switch (package.Type)
                     {
-                        var result = RouterController.DirectToRouter(this, package);
-                        Send(result);
-                        return;
+                        case PackageType.Package:
+                            var result = HandlersController.RouteToHandler(this, package);
+                            if (result is not null)
+                                Task.Run(() => Send(result));
+                            break;
+                        case PackageType.CloseHandler:
+                            var pack = HandlersController.CloseHandlerRequest(package.Route);
+                            Task.Run(() => Send(pack));
+                            break;
+                        case PackageType.CreateHandler:
+                            pack = HandlersController.CreateHandlerRequest(package.Route);
+                            Task.Run(() => Send(pack));
+                            break;
+                        case PackageType.ErrorResponse:
+                            //Console.WriteLine($"Error Response: {package.Status}; Route: {package.Route}");
+                            break;
+                        case PackageType.DoneResponse:
+                            //Console.WriteLine($"Done Response: {package.Status}; Route: {package.Route}");
+                            break;
                     }
                 }
             }

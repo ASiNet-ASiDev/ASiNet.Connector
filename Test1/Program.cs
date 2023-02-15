@@ -1,4 +1,5 @@
 ﻿using ASiNet.Connector;
+using ASiNet.Connector.Attributes;
 using System;
 
 var connection = await Connection.Connect("localhost", 50500);
@@ -10,16 +11,24 @@ if (connection.Status != ASiNet.Connector.Enums.ConnectionStatus.Connected)
 
 connection.WriteTimeout = 1000;
 connection.ReadTimeout = 1000;
-connection.HandlersController += (new("test1", "test"), OnPackage);
 
-connection.Send("Hello World!", new("test1", "test"));
+connection.HandlersController += new TestHandler();
+
+connection.SendRequest("Hello World!", new("test1", "test", -1));
 Console.Read();
 
-void OnPackage(Connection connection, Package pack, string str)
+[Handler("test1")]
+class TestHandler : IDisposable
 {
-    Console.WriteLine($"[{pack.Route}] [{pack.RouterControllerResult}] [{pack.Json}]");
+    [HandlerMethod("response")]
+    public void TestMethodResponse(Connection connection, string text)
+    {
+        Console.WriteLine($"Response: {text}");
+        connection.HandlersController.CloseHandler(connection, this);
+    }
+
+    public void Dispose()
+    {
+        Console.WriteLine("Handler Closed!");
+    }
 }
-
-Console.WriteLine($"{connection.Status}");
-
-Console.ReadKey();

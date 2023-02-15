@@ -1,19 +1,27 @@
 ﻿using ASiNet.Connector;
 using ASiNet.Connector.Attributes;
+using ASiNet.Connector.Enums;
 
 var connection = await Connection.WaitConnect(50500);
 
 Console.WriteLine($"{connection.Status}");
 
+connection.HandlersController +=  new TestHandler();
+
 Console.Read();
 
-[Router("test1")]
-class TestRouter
+[Handler("test1")]
+class TestHandler : IDisposable
 {
-    [RouterMethod("test")]
-    public string TestMethod(Connection connection, string text)
+    [HandlerMethod("test")]
+    public Response TestMethod(Connection connection, string text)
     {
-        Console.WriteLine(text);
-        return "Done!";
+        Console.WriteLine($"Request: {text}");
+        return new("Done Response!", "response");
+    }
+
+    public void Dispose()
+    {
+        Console.WriteLine("Handler Closed!");
     }
 }

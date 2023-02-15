@@ -2,6 +2,9 @@
 public enum PackageType : short
 {
     None = 0,
-    Request = 1,
-    Response = 2,
+    Package = 101,
+    ErrorResponse = 201,
+    DoneResponse = 202,
+    CloseHandler = 301,
+    CreateHandler = 302,
 }
